@@ -32,7 +32,8 @@ public extension SmokeHTTP1HandlerSelector {
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation
      */
-    public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription,
+    public mutating func addHandlerForUri<InputType: ValidatableOperationHTTPInputProtocol,
+        ErrorType: ErrorIdentifiableByDescription,
         OperationDelegateType: HTTP1OperationDelegate>(
         _ uri: String,
         httpMethod: HTTPMethod,
@@ -55,6 +56,63 @@ public extension SmokeHTTP1HandlerSelector {
         } else {
             handler = OperationHandler(
                 inputProvider: defaultOperationDelegate.getInputForOperation,
+                outputProvider: operation,
+                allowedErrors: allowedErrors,
+                operationDelegate: defaultOperationDelegate)
+        }
+        
+        addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
+    }
+    
+    /**
+     Adds a handler for the specified uri and http method.
+ 
+     - Parameters:
+        - uri: The uri to add the handler for.
+        - operation: the handler method for the operation.
+        - allowedErrors: the errors that can be serialized as responses
+          from the operation and their error codes.
+        - operationDelegate: optionally an operation-specific delegate to use when
+          handling the operation
+     */
+    public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription,
+        OperationDelegateType: HTTP1OperationDelegate>(
+        _ uri: String,
+        httpMethod: HTTPMethod,
+        operation: @escaping ((InputType, ContextType) throws -> ()),
+        allowedErrors: [(ErrorType, Int)],
+        inputLocation: OperationInputHTTPLocation = .body,
+        operationDelegate: OperationDelegateType? = nil)
+    where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
+    DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        
+        let handler: OperationHandler<ContextType,
+            OperationDelegateType.RequestType,
+            OperationDelegateType.ResponseHandlerType>
+        
+        if let operationDelegate = operationDelegate {
+            func inputProvider(request: OperationDelegateType.RequestType) throws -> InputType {
+                return try operationDelegate.getInputForOperation(
+                    request: request,
+                    location: inputLocation)
+            }
+            
+            handler = OperationHandler(
+                inputProvider: inputProvider,
+                outputProvider: operation,
+                allowedErrors: allowedErrors,
+                operationDelegate: operationDelegate)
+        } else {
+            // don't capture self
+            let delegateToUse = defaultOperationDelegate
+            func inputProvider(request: OperationDelegateType.RequestType) throws -> InputType {
+                return try delegateToUse.getInputForOperation(
+                    request: request,
+                    location: inputLocation)
+            }
+            
+            handler = OperationHandler(
+                inputProvider: inputProvider,
                 outputProvider: operation,
                 allowedErrors: allowedErrors,
                 operationDelegate: defaultOperationDelegate)

@@ -27,6 +27,18 @@ import Foundation
 import Foundation
 import SmokeOperations
 
+public enum OperationInputHTTPLocation {
+    case body
+    case query
+    case path
+    case headers
+}
+
+public enum OperationOutputHTTPLocation {
+    case body
+    case headers
+}
+
 /**
  Delegate protocol for an operation that manages operation handling specific to
  a transport protocol.
@@ -36,7 +48,14 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
      Function to retrieve an instance of the InputType from the request. Will throw an error
      if an instance of InputType cannot be constructed from the request.
      */
-    func getInputForOperation<InputType: Decodable>(request: RequestType) throws -> InputType
+    func getInputForOperation<InputType: OperationHTTPInputProtocol>(request: RequestType) throws -> InputType
+    
+    /**
+     Function to retrieve an instance of the InputType from the request. Will throw an error
+     if an instance of InputType cannot be constructed from the request.
+     */
+    func getInputForOperation<InputType: Decodable>(request: RequestType,
+                                                    location: OperationInputHTTPLocation) throws -> InputType
     
     /**
      Function to handle a successful response from an operation.
@@ -47,7 +66,23 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
         - output: The instance of the OutputType to send as a response.
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
-    func handleResponseForOperation<OutputType: Encodable>(request: RequestType,
-                                                           output: OutputType,
-                                                           responseHandler: ResponseHandlerType)
+    func handleResponseForOperation<OutputType: OperationHTTPOutputProtocol>(
+        request: RequestType,
+        output: OutputType,
+        responseHandler: ResponseHandlerType)
+    
+    /**
+     Function to handle a successful response from an operation.
+ 
+     - Parameters:
+        - request: The original request corresponding to the operation. Can be used to determine how to
+          handle the response (such as requested response type).
+        - output: The instance of the OutputType to send as a response.
+        - responseHander: typically a response handler specific to the transport protocol being used.
+     */
+    func handleResponseForOperation<OutputType: Encodable>(
+        request: RequestType,
+        location: OperationOutputHTTPLocation,
+        output: OutputType,
+        responseHandler: ResponseHandlerType)
 }
