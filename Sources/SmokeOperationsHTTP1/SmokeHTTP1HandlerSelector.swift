@@ -25,7 +25,10 @@ import NIOHTTP1
  */
 public protocol SmokeHTTP1HandlerSelector {
     associatedtype ContextType
-    associatedtype OperationDelegateType: OperationDelegate
+    associatedtype DefaultOperationDelegateType: HTTP1OperationDelegate
+    
+    /// Get the instance of the Default OperationDelegate type
+    var defaultOperationDelegate: DefaultOperationDelegateType { get }
     
     /**
      Gets the handler to use for an operation with the provided http request
@@ -34,7 +37,10 @@ public protocol SmokeHTTP1HandlerSelector {
      - Parameters
         - requestHead: the request head of an incoming operation.
      */
-    func getHandlerForOperation(_ requestHead: HTTPRequestHead) throws -> OperationHandler<ContextType, OperationDelegateType>
+    func getHandlerForOperation(_ requestHead: HTTPRequestHead) throws
+        -> OperationHandler<ContextType,
+            DefaultOperationDelegateType.RequestType,
+            DefaultOperationDelegateType.ResponseHandlerType>
     
     /**
      Adds a handler for the specified uri and http method.
@@ -46,5 +52,7 @@ public protocol SmokeHTTP1HandlerSelector {
      */
     mutating func addHandlerForUri(_ uri: String,
                                    httpMethod: HTTPMethod,
-                                   handler: OperationHandler<ContextType, OperationDelegateType>)
+                                   handler: OperationHandler<ContextType,
+                                    DefaultOperationDelegateType.RequestType,
+                                DefaultOperationDelegateType.ResponseHandlerType>)
 }

@@ -59,7 +59,9 @@ func handleBadOperationAsyncWithThrow(input: ExampleInput, context: ExampleConte
 }
 
 fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate> = {
-    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate>()
+    let defaultOperationDelegate = JSONPayloadHTTP1OperationDelegate()
+    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate>(defaultOperationDelegate: defaultOperationDelegate)
+    
     newHandlerSelector.addHandlerForUri("exampleoperation", httpMethod: .POST,
                                         handler: OperationHandler(operation: handleExampleOperationAsync,
                                                                   allowedErrors: allowedErrors))

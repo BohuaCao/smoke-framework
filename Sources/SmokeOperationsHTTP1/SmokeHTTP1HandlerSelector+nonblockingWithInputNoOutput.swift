@@ -32,15 +32,37 @@ public extension SmokeHTTP1HandlerSelector {
         - operationDelegate: optionally an operation-specific delegate to use when
           handling the operation
      */
-    public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription>(
+    public mutating func addHandlerForUri<InputType: ValidatableCodable, ErrorType: ErrorIdentifiableByDescription,
+        OperationDelegateType: HTTP1OperationDelegate>(
         _ uri: String,
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType, @escaping (Swift.Error?) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
-        operationDelegate: OperationDelegateType? = nil) {
-            let handler = OperationHandler(operation: operation,
-                                           allowedErrors: allowedErrors,
-                                           operationDelegate: operationDelegate)
+        operationDelegate: OperationDelegateType? = nil)
+    where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
+    DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        
+        func outputProvider(input: InputType, context: ContextType, completion: @escaping (Swift.Error?) -> ()) throws {
+            try operation(input, context, completion)
+        }
+        
+        let handler: OperationHandler<ContextType,
+            OperationDelegateType.RequestType,
+            OperationDelegateType.ResponseHandlerType>
+        
+        if let operationDelegate = operationDelegate {
+            handler = OperationHandler(
+                inputProvider: operationDelegate.getInputForOperation,
+                outputProvider: operation,
+                allowedErrors: allowedErrors,
+                operationDelegate: operationDelegate)
+        } else {
+            handler = OperationHandler(
+                inputProvider: defaultOperationDelegate.getInputForOperation,
+                outputProvider: operation,
+                allowedErrors: allowedErrors,
+                operationDelegate: defaultOperationDelegate)
+        }
         
         addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
     }

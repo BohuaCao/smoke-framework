@@ -30,13 +30,12 @@ internal struct PingParameters {
  Implementation of the HttpRequestHandler protocol that handles an
  incoming Http request as an operation.
  */
-struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationDelegateType>: HTTP1RequestHandler
+struct OperationServerHTTP1RequestHandler<ContextType, SelectorType>: HTTP1RequestHandler
         where SelectorType: SmokeHTTP1HandlerSelector, SelectorType.ContextType == ContextType,
-        SelectorType.OperationDelegateType == OperationDelegateType, OperationDelegateType.RequestType == SmokeHTTP1Request,
-        OperationDelegateType.ResponseHandlerType == HTTP1ResponseHandler {
+        SmokeHTTP1Request == SelectorType.DefaultOperationDelegateType.RequestType,
+        HTTP1ResponseHandler == SelectorType.DefaultOperationDelegateType.ResponseHandlerType {
     let handlerSelector: SelectorType
     let context: ContextType
-    let defaultOperationDelegate: OperationDelegateType
 
     public func handle(requestHead: HTTPRequestHead, body: Data?, responseHandler: HTTP1ResponseHandler) {
         // this is the ping url
@@ -51,26 +50,28 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType, OperationDe
         let smokeHTTP1Request = SmokeHTTP1Request(httpRequestHead: requestHead, body: body)
 
         // get the handler to use
-        let handler: OperationHandler<ContextType, OperationDelegateType>
+        let handler: OperationHandler<ContextType, SmokeHTTP1Request, HTTP1ResponseHandler>
+        let defaultOperationDelegate = handlerSelector.defaultOperationDelegate
                 
         do {
             handler = try handlerSelector.getHandlerForOperation(requestHead)
         } catch SmokeOperationsError.invalidOperation(reason: let reason) {
-            defaultOperationDelegate.handleResponseForInvalidOperation(request: smokeHTTP1Request,
-                                                                       message: reason,
-                                                                       responseHandler: responseHandler)
+            defaultOperationDelegate.handleResponseForInvalidOperation(
+                request: smokeHTTP1Request,
+                message: reason,
+                responseHandler: responseHandler)
             return
         } catch {
             Log.error("Unexpected handler selection error: \(error))")
             
-            defaultOperationDelegate.handleResponseForInternalServerError(request: smokeHTTP1Request,
-                                                                          responseHandler: responseHandler)
+            defaultOperationDelegate.handleResponseForInternalServerError(
+                request: smokeHTTP1Request,
+                responseHandler: responseHandler)
             return
         }
         
         // let it be handled
         handler.handle(smokeHTTP1Request, withContext: context,
-                       defaultOperationDelegate: defaultOperationDelegate,
                        responseHandler: responseHandler)
     }
 }

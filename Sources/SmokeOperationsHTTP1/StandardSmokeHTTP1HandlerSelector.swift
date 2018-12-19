@@ -19,15 +19,24 @@ import Foundation
 import SmokeOperations
 import NIOHTTP1
 import LoggerAPI
+import SmokeHTTP1
 
 /**
  Implementation of the SmokeHTTP1HandlerSelector protocol that selects a handler
  based on the case-insensitive uri and HTTP method of the incoming request.
  */
-public struct StandardSmokeHTTP1HandlerSelector<ContextType, OperationDelegateType: OperationDelegate>: SmokeHTTP1HandlerSelector {
-    private var handlerMapping: [String: [HTTPMethod: OperationHandler<ContextType, OperationDelegateType>]] = [:]
+public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDelegateType: HTTP1OperationDelegate>: SmokeHTTP1HandlerSelector {
+    public let defaultOperationDelegate: DefaultOperationDelegateType
     
-    public init() {
+    public typealias SelectorOperationHandlerType = OperationHandler<ContextType,
+            DefaultOperationDelegateType.RequestType,
+            DefaultOperationDelegateType.ResponseHandlerType>
+    
+    
+    private var handlerMapping: [String: [HTTPMethod: SelectorOperationHandlerType]] = [:]
+    
+    public init(defaultOperationDelegate: DefaultOperationDelegateType) {
+        self.defaultOperationDelegate = defaultOperationDelegate
     }
     
     /**
@@ -37,7 +46,7 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, OperationDelegateTy
      - Parameters
         - requestHead: the request head of an incoming operation.
      */
-    public func getHandlerForOperation(_ requestHead: HTTPRequestHead) throws -> OperationHandler<ContextType, OperationDelegateType> {
+    public func getHandlerForOperation(_ requestHead: HTTPRequestHead) throws -> SelectorOperationHandlerType {
         let lowerCasedUri = requestHead.uri.lowercased()
         let httpMethod = requestHead.method
         
@@ -60,7 +69,7 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, OperationDelegateTy
      */
     public mutating func addHandlerForUri(_ uri: String,
                                           httpMethod: HTTPMethod,
-                                          handler: OperationHandler<ContextType, OperationDelegateType>) {
+                                          handler: SelectorOperationHandlerType) {
         let lowerCasedUri = uri.lowercased()
         if var methodMapping = handlerMapping[lowerCasedUri] {
             methodMapping[httpMethod] = handler

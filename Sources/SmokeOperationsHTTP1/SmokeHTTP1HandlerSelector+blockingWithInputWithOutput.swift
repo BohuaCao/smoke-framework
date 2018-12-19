@@ -33,15 +33,34 @@ public extension SmokeHTTP1HandlerSelector {
           handling the operation
      */
     public mutating func addHandlerForUri<InputType: ValidatableCodable, OutputType: ValidatableCodable,
-            ErrorType: ErrorIdentifiableByDescription>(
+        ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
         _ uri: String,
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType) throws -> OutputType),
         allowedErrors: [(ErrorType, Int)],
-        operationDelegate: OperationDelegateType? = nil) {
-            let handler = OperationHandler(operation: operation,
-                                           allowedErrors: allowedErrors,
-                                           operationDelegate: operationDelegate)
+        operationDelegate: OperationDelegateType? = nil)
+    where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
+    DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        
+        let handler: OperationHandler<ContextType,
+            OperationDelegateType.RequestType,
+            OperationDelegateType.ResponseHandlerType>
+        
+        if let operationDelegate = operationDelegate {
+            handler = OperationHandler(
+                inputProvider: operationDelegate.getInputForOperation,
+                outputProvider: operation,
+                outputHandler: operationDelegate.handleResponseForOperation,
+                allowedErrors: allowedErrors,
+                operationDelegate: operationDelegate)
+        } else {
+            handler = OperationHandler(
+                inputProvider: defaultOperationDelegate.getInputForOperation,
+                outputProvider: operation,
+                outputHandler: defaultOperationDelegate.handleResponseForOperation,
+                allowedErrors: allowedErrors,
+                operationDelegate: defaultOperationDelegate)
+        }
         
         addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
     }

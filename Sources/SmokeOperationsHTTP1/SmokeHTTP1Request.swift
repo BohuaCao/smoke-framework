@@ -17,6 +17,7 @@
 
 import Foundation
 import NIOHTTP1
+import SmokeHTTP1
 
 /**
  Structure representing an incoming HTTP1 request.
