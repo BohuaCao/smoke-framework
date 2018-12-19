@@ -1,4 +1,4 @@
-// swift-tools-version:4.0
+// swift-tools-version:4.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -19,6 +19,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/IBM-Swift/LoggerAPI.git", .upToNextMajor(from: "1.0.0")),
         .package(url: "https://github.com/apple/swift-nio.git", from: "1.0.0"),
+        .package(path: "/Volumes/Unix/Packages/smoke-http"),
     ],
     targets: [
         .target(
@@ -29,7 +30,8 @@ let package = Package(
             dependencies: ["LoggerAPI"]),
         .target(
             name: "SmokeOperationsHTTP1",
-            dependencies: ["SmokeOperations", "SmokeHTTP1"]),
+            dependencies: ["SmokeOperations", "SmokeHTTP1", "QueryCoding",
+                           "HTTPPathCoding", "HTTPHeadersCoding"]),
         .testTarget(
             name: "SmokeOperationsHTTP1Tests",
             dependencies: ["SmokeOperationsHTTP1"]),
