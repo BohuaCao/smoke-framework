@@ -48,7 +48,7 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
      Function to retrieve an instance of the InputType from the request. Will throw an error
      if an instance of InputType cannot be constructed from the request.
      */
-    func getInputForOperation<InputType: OperationHTTPInputProtocol>(request: RequestType) throws -> InputType
+    func getInputForOperation<InputType: OperationHTTP1InputProtocol>(request: RequestType) throws -> InputType
     
     /**
      Function to retrieve an instance of the InputType from the request. Will throw an error
@@ -66,7 +66,7 @@ public protocol HTTP1OperationDelegate: OperationDelegate {
         - output: The instance of the OutputType to send as a response.
         - responseHander: typically a response handler specific to the transport protocol being used.
      */
-    func handleResponseForOperation<OutputType: OperationHTTPOutputProtocol>(
+    func handleResponseForOperation<OutputType: OperationHTTP1OutputProtocol>(
         request: RequestType,
         output: OutputType,
         responseHandler: ResponseHandlerType)

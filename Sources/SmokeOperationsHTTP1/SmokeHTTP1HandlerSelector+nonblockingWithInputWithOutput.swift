@@ -29,36 +29,20 @@ public extension SmokeHTTP1HandlerSelector {
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
-        - operationDelegate: optionally an operation-specific delegate to use when
-          handling the operation
      */
-    public mutating func addHandlerForUri<InputType: ValidatableOperationHTTPInputProtocol, OutputType: ValidatableOperationHTTPOutputProtocol,
-            ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
+    public mutating func addHandlerForUri<InputType: ValidatableOperationHTTP1InputProtocol, OutputType: ValidatableOperationHTTP1OutputProtocol,
+            ErrorType: ErrorIdentifiableByDescription>(
         _ uri: String,
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType, @escaping (SmokeResult<OutputType>) -> ()) throws -> ()),
-        allowedErrors: [(ErrorType, Int)],
-        operationDelegate: OperationDelegateType? = nil)
-    where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
-    DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        allowedErrors: [(ErrorType, Int)]) {
         
-        let handler: OperationHandler<ContextType, OperationDelegateType.RequestType, OperationDelegateType.ResponseHandlerType>
-        
-        if let operationDelegate = operationDelegate {
-            handler = OperationHandler(
-                inputProvider: operationDelegate.getInputForOperation,
-                outputProvider: operation,
-                outputHandler: operationDelegate.handleResponseForOperation,
-                allowedErrors: allowedErrors,
-                operationDelegate: operationDelegate)
-        } else {
-            handler = OperationHandler(
-                inputProvider: defaultOperationDelegate.getInputForOperation,
-                outputProvider: operation,
-                outputHandler: defaultOperationDelegate.handleResponseForOperation,
-                allowedErrors: allowedErrors,
-                operationDelegate: defaultOperationDelegate)
-        }
+        let handler = OperationHandler(
+            inputProvider: defaultOperationDelegate.getInputForOperation,
+            outputProvider: operation,
+            outputHandler: defaultOperationDelegate.handleResponseForOperation,
+            allowedErrors: allowedErrors,
+            operationDelegate: defaultOperationDelegate)
         
         addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
     }
@@ -71,7 +55,83 @@ public extension SmokeHTTP1HandlerSelector {
         - operation: the handler method for the operation.
         - allowedErrors: the errors that can be serialized as responses
           from the operation and their error codes.
-        - operationDelegate: optionally an operation-specific delegate to use when
+        - operationDelegate: an operation-specific delegate to use when
+          handling the operation
+     */
+    public mutating func addHandlerForUri<InputType: ValidatableOperationHTTP1InputProtocol, OutputType: ValidatableOperationHTTP1OutputProtocol,
+            ErrorType: ErrorIdentifiableByDescription, OperationDelegateType: HTTP1OperationDelegate>(
+        _ uri: String,
+        httpMethod: HTTPMethod,
+        operation: @escaping ((InputType, ContextType, @escaping (SmokeResult<OutputType>) -> ()) throws -> ()),
+        allowedErrors: [(ErrorType, Int)],
+        operationDelegate: OperationDelegateType)
+    where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
+    DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
+        
+        let handler = OperationHandler(
+            inputProvider: operationDelegate.getInputForOperation,
+            outputProvider: operation,
+            outputHandler: operationDelegate.handleResponseForOperation,
+            allowedErrors: allowedErrors,
+            operationDelegate: operationDelegate)
+        
+        addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
+    }
+    
+    /**
+     Adds a handler for the specified uri and http method.
+ 
+     - Parameters:
+        - uri: The uri to add the handler for.
+        - operation: the handler method for the operation.
+        - allowedErrors: the errors that can be serialized as responses
+          from the operation and their error codes.
+     */
+    public mutating func addHandlerForUri<InputType: ValidatableCodable, OutputType: ValidatableCodable,
+            ErrorType: ErrorIdentifiableByDescription>(
+        _ uri: String,
+        httpMethod: HTTPMethod,
+        operation: @escaping ((InputType, ContextType, @escaping (SmokeResult<OutputType>) -> ()) throws -> ()),
+        allowedErrors: [(ErrorType, Int)],
+        inputLocation: OperationInputHTTPLocation,
+        outputLocation: OperationOutputHTTPLocation) {
+        
+        // don't capture self
+        let delegateToUse = defaultOperationDelegate
+        func inputProvider(request: DefaultOperationDelegateType.RequestType) throws -> InputType {
+            return try delegateToUse.getInputForOperation(
+                request: request,
+                location: inputLocation)
+        }
+        
+        func outputHandler(request: DefaultOperationDelegateType.RequestType,
+                           output: OutputType,
+                           responseHandler: DefaultOperationDelegateType.ResponseHandlerType) {
+            delegateToUse.handleResponseForOperation(request: request,
+                                                     location: outputLocation,
+                                                     output: output,
+                                                     responseHandler: responseHandler)
+        }
+        
+        let handler = OperationHandler(
+            inputProvider: inputProvider,
+            outputProvider: operation,
+            outputHandler: outputHandler,
+            allowedErrors: allowedErrors,
+            operationDelegate: defaultOperationDelegate)
+        
+        addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
+    }
+    
+    /**
+     Adds a handler for the specified uri and http method.
+ 
+     - Parameters:
+        - uri: The uri to add the handler for.
+        - operation: the handler method for the operation.
+        - allowedErrors: the errors that can be serialized as responses
+          from the operation and their error codes.
+        - operationDelegate: an operation-specific delegate to use when
           handling the operation
      */
     public mutating func addHandlerForUri<InputType: ValidatableCodable, OutputType: ValidatableCodable,
@@ -80,61 +140,33 @@ public extension SmokeHTTP1HandlerSelector {
         httpMethod: HTTPMethod,
         operation: @escaping ((InputType, ContextType, @escaping (SmokeResult<OutputType>) -> ()) throws -> ()),
         allowedErrors: [(ErrorType, Int)],
-        inputLocation: OperationInputHTTPLocation = .body,
-        outputLocation: OperationOutputHTTPLocation = .body,
-        operationDelegate: OperationDelegateType? = nil)
+        inputLocation: OperationInputHTTPLocation,
+        outputLocation: OperationOutputHTTPLocation,
+        operationDelegate: OperationDelegateType)
     where DefaultOperationDelegateType.RequestType == OperationDelegateType.RequestType,
     DefaultOperationDelegateType.ResponseHandlerType == OperationDelegateType.ResponseHandlerType {
         
-        let handler: OperationHandler<ContextType, OperationDelegateType.RequestType, OperationDelegateType.ResponseHandlerType>
+        func inputProvider(request: OperationDelegateType.RequestType) throws -> InputType {
+            return try operationDelegate.getInputForOperation(
+                request: request,
+                location: inputLocation)
+        }
         
-        if let operationDelegate = operationDelegate {
-            func inputProvider(request: OperationDelegateType.RequestType) throws -> InputType {
-                return try operationDelegate.getInputForOperation(
-                    request: request,
-                    location: inputLocation)
-            }
-            
-            func outputHandler(request: OperationDelegateType.RequestType,
-                               output: OutputType,
-                               responseHandler: OperationDelegateType.ResponseHandlerType) {
-                operationDelegate.handleResponseForOperation(request: request,
-                                                             location: outputLocation,
-                                                             output: output,
-                                                             responseHandler: responseHandler)
-            }
-            
-            handler = OperationHandler(
-                inputProvider: inputProvider,
-                outputProvider: operation,
-                outputHandler: outputHandler,
-                allowedErrors: allowedErrors,
-                operationDelegate: operationDelegate)
-        } else {
-            // don't capture self
-            let delegateToUse = defaultOperationDelegate
-            func inputProvider(request: OperationDelegateType.RequestType) throws -> InputType {
-                return try delegateToUse.getInputForOperation(
-                    request: request,
-                    location: inputLocation)
-            }
-            
-            func outputHandler(request: OperationDelegateType.RequestType,
-                               output: OutputType,
-                               responseHandler: OperationDelegateType.ResponseHandlerType) {
-                delegateToUse.handleResponseForOperation(request: request,
+        func outputHandler(request: OperationDelegateType.RequestType,
+                           output: OutputType,
+                           responseHandler: OperationDelegateType.ResponseHandlerType) {
+            operationDelegate.handleResponseForOperation(request: request,
                                                          location: outputLocation,
                                                          output: output,
                                                          responseHandler: responseHandler)
-            }
-            
-            handler = OperationHandler(
-                inputProvider: inputProvider,
-                outputProvider: operation,
-                outputHandler: outputHandler,
-                allowedErrors: allowedErrors,
-                operationDelegate: defaultOperationDelegate)
         }
+        
+        let handler = OperationHandler(
+            inputProvider: inputProvider,
+            outputProvider: operation,
+            outputHandler: outputHandler,
+            allowedErrors: allowedErrors,
+            operationDelegate: operationDelegate)
         
         addHandlerForUri(uri, httpMethod: httpMethod, handler: handler)
     }

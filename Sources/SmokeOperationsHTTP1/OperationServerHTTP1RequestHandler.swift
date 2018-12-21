@@ -20,6 +20,7 @@ import SmokeOperations
 import NIOHTTP1
 import SmokeHTTP1
 import LoggerAPI
+import ShapeCoding
 
 internal struct PingParameters {
     static let uri = "/ping"
@@ -47,15 +48,25 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType>: HTTP1Reque
             return
         }
         
-        let smokeHTTP1Request = SmokeHTTP1Request(httpRequestHead: requestHead, body: body)
+        let uriComponents = requestHead.uri.split(separator: "?", maxSplits: 1)
+        let path = String(uriComponents[0])
+        let query = uriComponents.count > 1 ? String(uriComponents[0]) : ""
 
         // get the handler to use
         let handler: OperationHandler<ContextType, SmokeHTTP1Request, HTTP1ResponseHandler>
+        let shape: Shape
         let defaultOperationDelegate = handlerSelector.defaultOperationDelegate
                 
         do {
-            handler = try handlerSelector.getHandlerForOperation(requestHead)
+            (handler, shape) = try handlerSelector.getHandlerForOperation(
+                path,
+                httpMethod: requestHead.method)
         } catch SmokeOperationsError.invalidOperation(reason: let reason) {
+            let smokeHTTP1Request = SmokeHTTP1Request(httpRequestHead: requestHead,
+                                                  query: query,
+                                                  pathShape: .null,
+                                                  body: body)
+            
             defaultOperationDelegate.handleResponseForInvalidOperation(
                 request: smokeHTTP1Request,
                 message: reason,
@@ -63,12 +74,21 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType>: HTTP1Reque
             return
         } catch {
             Log.error("Unexpected handler selection error: \(error))")
+            let smokeHTTP1Request = SmokeHTTP1Request(httpRequestHead: requestHead,
+                                                  query: query,
+                                                  pathShape: .null,
+                                                  body: body)
             
             defaultOperationDelegate.handleResponseForInternalServerError(
                 request: smokeHTTP1Request,
                 responseHandler: responseHandler)
             return
         }
+        
+        let smokeHTTP1Request = SmokeHTTP1Request(httpRequestHead: requestHead,
+                                                  query: query,
+                                                  pathShape: shape,
+                                                  body: body)
         
         // let it be handled
         handler.handle(smokeHTTP1Request, withContext: context,

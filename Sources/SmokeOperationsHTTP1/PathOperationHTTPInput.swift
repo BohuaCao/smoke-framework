@@ -18,19 +18,23 @@
 import Foundation
 
 /**
- Implementation of the OperationHTTPInputProtocol that only decodes
+ Implementation of the OperationHTTP1InputProtocol that only decodes
  the HTTP path.
  */
-struct PathOperationHTTPInput<PathType: Decodable>: OperationHTTPInputProtocol {
+public struct PathOperationHTTPInput<PathType: Decodable>: OperationHTTP1InputProtocol {
     // This struct doesn't use these types but we must provide a
     // concrete type to satify the protocol
-    typealias QueryType = String
-    typealias BodyType = String
-    typealias HeadersType = String
+    public typealias QueryType = String
+    public typealias BodyType = String
+    public typealias HeadersType = String
     
-    let path: PathType
+    public let path: PathType
     
-    static func compose(queryDecodableProvider: () throws -> String,
+    public init(path: PathType) {
+        self.path = path
+    }
+    
+    public static func compose(queryDecodableProvider: () throws -> String,
                         pathDecodableProvider: () throws -> PathType,
                         bodyDecodableProvider: () throws -> String,
                         headersDecodableProvider: () throws -> String) throws -> PathOperationHTTPInput {

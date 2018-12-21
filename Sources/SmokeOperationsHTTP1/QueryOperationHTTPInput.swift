@@ -18,19 +18,23 @@
 import Foundation
 
 /**
- Implementation of the OperationHTTPInputProtocol that only decodes
+ Implementation of the OperationHTTP1InputProtocol that only decodes
  the HTTP query.
  */
-struct QueryOperationHTTPInput<QueryType: Decodable>: OperationHTTPInputProtocol {
+public struct QueryOperationHTTPInput<QueryType: Decodable>: OperationHTTP1InputProtocol {
     // This struct doesn't use these types but we must provide a
     // concrete type to satify the protocol
-    typealias BodyType = String
-    typealias PathType = String
-    typealias HeadersType = String
+    public typealias BodyType = String
+    public typealias PathType = String
+    public typealias HeadersType = String
     
-    let query: QueryType
+    public let query: QueryType
     
-    static func compose(queryDecodableProvider: () throws -> QueryType,
+    public init(query: QueryType) {
+        self.query = query
+    }
+    
+    public static func compose(queryDecodableProvider: () throws -> QueryType,
                         pathDecodableProvider: () throws -> String,
                         bodyDecodableProvider: () throws -> String,
                         headersDecodableProvider: () throws -> String) throws -> QueryOperationHTTPInput {

@@ -19,6 +19,9 @@ import Foundation
 import SmokeOperations
 import SmokeHTTP1
 import LoggerAPI
+import HTTPPathCoding
+import HTTPHeadersCoding
+import QueryCoding
 
 internal struct MimeTypes {
     static let json = "application/json"
@@ -40,15 +43,17 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
         
     }
     
-    public func getInputForOperation<InputType: OperationHTTPInputProtocol>(request: SmokeHTTP1Request) throws -> InputType {
+    public func getInputForOperation<InputType: OperationHTTP1InputProtocol>(request: SmokeHTTP1Request) throws -> InputType {
         
         
         func queryDecodableProvider() throws -> InputType.QueryType {
-            throw SmokeOperationsError.validationError(reason: "Query expected; none found.")
+            return try QueryDecoder().decode(InputType.QueryType.self,
+                                             from: request.query)
         }
         
         func pathDecodableProvider() throws -> InputType.PathType {
-            throw SmokeOperationsError.validationError(reason: "Path expected; none found.")
+            return try HTTPPathDecoder().decode(InputType.PathType.self,
+                                                fromShape: request.pathShape)
         }
         
         func bodyDecodableProvider() throws -> InputType.BodyType {
@@ -60,7 +65,12 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
         }
         
         func headersDecodableProvider() throws -> InputType.HeadersType {
-            throw SmokeOperationsError.validationError(reason: "Headers expected; none found.")
+            let headers: [(String, String?)] =
+                request.httpRequestHead.headers.map { header in
+                    return (header.name, header.value)
+            }
+            return try HTTPHeadersDecoder().decode(InputType.HeadersType.self,
+                                                   from: headers)
         }
         
         return try InputType.compose(queryDecodableProvider: queryDecodableProvider,
@@ -98,7 +108,7 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
     }
     
     public func handleResponseForOperation<OutputType>(request: SmokeHTTP1Request, output: OutputType,
-                                                       responseHandler: HTTP1ResponseHandler) where OutputType: OperationHTTPOutputProtocol {
+                                                       responseHandler: HTTP1ResponseHandler) where OutputType: OperationHTTP1OutputProtocol {
         let body: (contentType: String, data: Data)?
         
         if let bodyEncodable = output.bodyEncodable {
@@ -117,8 +127,32 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
             body = nil
         }
         
-        let responseComponents = HTTP1ServerResponseComponents(additionalHeaders: [],
-                                                               body: body)
+        let additionalHeaders: [(String, String)]
+        if let additionalHeadersEncodable = output.additionalHeadersEncodable {
+            let headers: [(String, String?)]
+            do {
+                headers = try HTTPHeadersEncoder().encode(additionalHeadersEncodable)
+            } catch {
+                Log.error("Serialization error: unable to encode response: \(error)")
+                
+                handleResponseForInternalServerError(request: request, responseHandler: responseHandler)
+                return
+            }
+            
+            additionalHeaders = headers.compactMap { header in
+                guard let value = header.1 else {
+                    return nil
+                }
+                
+                return (header.0, value)
+            }
+        } else {
+            additionalHeaders = []
+        }
+        
+        let responseComponents = HTTP1ServerResponseComponents(
+            additionalHeaders: additionalHeaders,
+            body: body)
         
         responseHandler.complete(status: .ok, responseComponents: responseComponents)
     }
@@ -130,15 +164,15 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
             responseHandler: HTTP1ResponseHandler) where OutputType : Encodable {
         switch location {
         case .body:
-            let wrappedOutput = StandardOperationHTTPOutput<OutputType, String>(
-                bodyEncodable: output, additionalHeadersEncodable: nil)
+            let wrappedOutput = BodyOperationHTTPOutput<OutputType>(
+                bodyEncodable: output)
             
             handleResponseForOperation(request: request,
                                        output: wrappedOutput,
                                        responseHandler: responseHandler)
         case .headers:
-            let wrappedOutput = StandardOperationHTTPOutput<String, OutputType>(
-                bodyEncodable: nil, additionalHeadersEncodable: output)
+            let wrappedOutput = AdditionalHeadersOperationHTTPOutput<OutputType>(
+                additionalHeadersEncodable: output)
             
             handleResponseForOperation(request: request,
                                        output: wrappedOutput,

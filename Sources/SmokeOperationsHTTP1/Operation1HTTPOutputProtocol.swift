@@ -11,13 +11,25 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  StandardOperationHTTPOutput.swift
+//  OperationHTTP1OutputProtocol.swift
 //  SmokeOperationsHTTP1
 //
 
 import Foundation
+import SmokeOperations
 
-struct StandardOperationHTTPOutput<BodyType: Encodable, AdditionalHeadersType: Encodable>: OperationHTTPOutputProtocol {
-    let bodyEncodable: BodyType?
-    let additionalHeadersEncodable: AdditionalHeadersType?
+/**
+ A protocol that represents the output from an operation to be
+ send as a HTTP response.
+ */
+public protocol OperationHTTP1OutputProtocol {
+    associatedtype BodyType: Encodable
+    associatedtype AdditionalHeadersType: Encodable
+
+    /// An instance of a type that is encodable to a body
+    var bodyEncodable: BodyType? { get }
+    /// An instance of a type that is encodable to additional headers
+    var additionalHeadersEncodable: AdditionalHeadersType? { get }
 }
+
+public typealias ValidatableOperationHTTP1OutputProtocol = Validatable & OperationHTTP1OutputProtocol

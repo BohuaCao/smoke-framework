@@ -20,6 +20,8 @@ import SmokeOperations
 import NIOHTTP1
 import LoggerAPI
 import SmokeHTTP1
+import HTTPPathCoding
+import ShapeCoding
 
 /**
  Implementation of the SmokeHTTP1HandlerSelector protocol that selects a handler
@@ -32,8 +34,17 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
             DefaultOperationDelegateType.RequestType,
             DefaultOperationDelegateType.ResponseHandlerType>
     
+    private struct TokenizedHandler {
+        let template: String
+        let templateSegments: [HTTPPathSegment]
+        let httpMethod: HTTPMethod
+        let operationHandler: SelectorOperationHandlerType
+    }
+    
+    let segmentsSeparator: Character = "/"
     
     private var handlerMapping: [String: [HTTPMethod: SelectorOperationHandlerType]] = [:]
+    private var tokenizedHandlerMapping: [TokenizedHandler] = []
     
     public init(defaultOperationDelegate: DefaultOperationDelegateType) {
         self.defaultOperationDelegate = defaultOperationDelegate
@@ -46,17 +57,80 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
      - Parameters
         - requestHead: the request head of an incoming operation.
      */
-    public func getHandlerForOperation(_ requestHead: HTTPRequestHead) throws -> SelectorOperationHandlerType {
-        let lowerCasedUri = requestHead.uri.lowercased()
-        let httpMethod = requestHead.method
+    public func getHandlerForOperation(_ uri: String, httpMethod: HTTPMethod) throws -> (SelectorOperationHandlerType, Shape) {
+        let lowerCasedUri = uri.lowercased()
         
         guard let handler = handlerMapping[lowerCasedUri]?[httpMethod] else {
-            throw SmokeOperationsError.invalidOperation(reason: "Invalid operation with uri '\(lowerCasedUri)', method '\(httpMethod)'")
+            guard let tokenizedHandler = getTokenizedHandler(lowerCasedUri: lowerCasedUri,
+                                                             httpMethod: httpMethod) else {
+                throw SmokeOperationsError.invalidOperation(reason:
+                    "Invalid operation with uri '\(lowerCasedUri)', method '\(httpMethod)'")
+                }
+            
+                return tokenizedHandler
         }
         
         Log.info("Operation handler selected with uri '\(lowerCasedUri)', method '\(httpMethod)'")
             
-        return handler
+        return (handler, .null)
+    }
+    
+    private func getTokenizedHandler(lowerCasedUri: String,
+                                     httpMethod: HTTPMethod) -> (SelectorOperationHandlerType, Shape)? {
+        let pathSegments = Array(lowerCasedUri.split(separator: segmentsSeparator)
+            .map(String.init).reversed())
+        
+        // iterate through each tokenized handler
+        for handler in tokenizedHandlerMapping {
+            // ignore if not the correct method
+            guard handler.httpMethod == httpMethod else {
+                continue
+            }
+            
+            guard let shape = getShapeForTemplate(pathSegments: pathSegments,
+                                                  tokenizedHandler: handler) else {
+                                                    continue
+            }
+            
+            return (handler.operationHandler, shape)
+        }
+        
+        return nil
+    }
+    
+    private func getShapeForTemplate(pathSegments: [String],
+                                     tokenizedHandler: TokenizedHandler) -> Shape? {
+        var remainingPathSegments = pathSegments
+        var remainingTemplateSegments = tokenizedHandler.templateSegments
+        var variables: [(String, String?)] = []
+        
+        // iterate through the path elements
+        while let templateSegment = remainingTemplateSegments.popLast() {
+            guard let pathSegment = remainingPathSegments.popLast() else {
+                return nil
+            }
+            
+            do {
+                try templateSegment.parse(value: pathSegment,
+                                          variables: &variables,
+                                          remainingSegmentValues: remainingPathSegments,
+                                          isLastSegment: remainingTemplateSegments.isEmpty)
+            } catch {
+                return nil
+            }
+        }
+
+        do {
+            let decoderOptions = StandardDecodingOptions(
+                shapeKeyDecodingStrategy: .useAsShapeSeparator("."),
+                shapeMapDecodingStrategy: .singleShapeEntry)
+            let stackValue = try StandardShapeParser.parse(with: variables,
+                                                           decoderOptions: decoderOptions)
+            
+            return stackValue
+        } catch {
+            return nil
+        }
     }
     
     /**
@@ -71,12 +145,46 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
                                           httpMethod: HTTPMethod,
                                           handler: SelectorOperationHandlerType) {
         let lowerCasedUri = uri.lowercased()
+        
+        
+        if addTokenizedUri(lowerCasedUri, httpMethod: httpMethod, handler: handler) {
+            return
+        }
+        
         if var methodMapping = handlerMapping[lowerCasedUri] {
             methodMapping[httpMethod] = handler
             handlerMapping[lowerCasedUri] = methodMapping
         } else {
             handlerMapping[lowerCasedUri] = [httpMethod: handler]
         }
+    }
+    
+    private mutating func addTokenizedUri(_ lowerCasedUri: String,
+                                 httpMethod: HTTPMethod,
+                                 handler: SelectorOperationHandlerType) -> Bool {
+        let tokenizedPath: [HTTPPathSegment]
+        do {
+            tokenizedPath = try HTTPPathSegment.tokenize(template: lowerCasedUri)
+        } catch {
+            return false
+        }
+        
+        // if this uri doesn't have any tokens (is a single string token
+        if tokenizedPath.count == 1 && tokenizedPath[0].tokens.count == 1,
+            case .string = tokenizedPath[0].tokens[0] {
+                return false
+        }
+        
+        let templateSegments = Array(tokenizedPath.reversed())
+        
+        let tokenizedHandler = TokenizedHandler(
+            template: lowerCasedUri,
+            templateSegments: templateSegments,
+            httpMethod: httpMethod, operationHandler: handler)
+        
+        tokenizedHandlerMapping.append(tokenizedHandler)
+        
+        return true
     }
 }
 

@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 //
-//  OperationHTTPInputProtocol.swift
+//  OperationHTTP1InputProtocol.swift
 //  SmokeOperationsHTTP1
 //
 
@@ -21,7 +21,7 @@ import SmokeOperations
 /**
  A protocol that represents the input to an operation from a HTTP request.
  */
-public protocol OperationHTTPInputProtocol {
+public protocol OperationHTTP1InputProtocol {
     associatedtype QueryType: Decodable
     associatedtype PathType: Decodable
     associatedtype BodyType: Decodable
@@ -41,4 +41,4 @@ public protocol OperationHTTPInputProtocol {
                         headersDecodableProvider: () throws -> HeadersType) throws -> Self
 }
 
-public typealias ValidatableOperationHTTPInputProtocol = Validatable & OperationHTTPInputProtocol
+public typealias ValidatableOperationHTTP1InputProtocol = Validatable & OperationHTTP1InputProtocol
