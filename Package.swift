@@ -19,7 +19,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/IBM-Swift/LoggerAPI.git", .upToNextMajor(from: "1.0.0")),
         .package(url: "https://github.com/apple/swift-nio.git", from: "1.0.0"),
-        .package(path: "/Volumes/Unix/Packages/smoke-http"),
+        .package(url: "https://github.com/amzn/smoke-http.git", from: "0.6.1"),
     ],
     targets: [
         .target(

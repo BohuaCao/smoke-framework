@@ -35,9 +35,9 @@ public struct HeadersOperationHTTPInput<HeadersType: Decodable>: OperationHTTP1I
     }
     
     public static func compose(queryDecodableProvider: () throws -> String,
-                        pathDecodableProvider: () throws -> String,
-                        bodyDecodableProvider: () throws -> String,
-                        headersDecodableProvider: () throws -> HeadersType) throws -> HeadersOperationHTTPInput {
+                               pathDecodableProvider: () throws -> String,
+                               bodyDecodableProvider: () throws -> String,
+                               headersDecodableProvider: () throws -> HeadersType) throws -> HeadersOperationHTTPInput {
         let headers = try headersDecodableProvider()
         
         return .init(headers: headers)

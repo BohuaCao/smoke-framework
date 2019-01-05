@@ -60,43 +60,61 @@ func handleBadOperationAsyncWithThrow(input: ExampleInput, context: ExampleConte
 
 fileprivate let handlerSelector: StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate> = {
     let defaultOperationDelegate = JSONPayloadHTTP1OperationDelegate()
-    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate>(defaultOperationDelegate: defaultOperationDelegate)
+    var newHandlerSelector = StandardSmokeHTTP1HandlerSelector<ExampleContext, JSONPayloadHTTP1OperationDelegate>(
+        defaultOperationDelegate: defaultOperationDelegate)
     
-    newHandlerSelector.addHandlerForUri("exampleoperation", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleExampleOperationAsync,
-                                                                  allowedErrors: allowedErrors))
+    newHandlerSelector.addHandlerForUri(
+        "exampleoperation", httpMethod: .POST,
+        operation: handleExampleOperationAsync,
+        allowedErrors: allowedErrors,
+        inputLocation: .body,
+        outputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri("examplegetoperation", httpMethod: .GET,
-                                        handler: OperationHandler(operation: handleExampleOperationAsync,
-                                                                  allowedErrors: allowedErrors))
+    newHandlerSelector.addHandlerForUri(
+        "examplegetoperation", httpMethod: .GET,
+        operation: handleExampleOperationAsync,
+        allowedErrors: allowedErrors,
+        inputLocation: .body,
+        outputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri("examplenobodyoperation", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleExampleOperationVoidAsync,
-                                                                  allowedErrors: allowedErrors))
+    newHandlerSelector.addHandlerForUri(
+        "examplenobodyoperation", httpMethod: .POST,
+        operation: handleExampleOperationVoidAsync,
+        allowedErrors: allowedErrors,
+        inputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri("badoperationvoidresponse", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleBadOperationVoidAsync,
-                                                                  allowedErrors: allowedErrors))
+    newHandlerSelector.addHandlerForUri(
+        "badoperationvoidresponse", httpMethod: .POST,
+        operation: handleBadOperationVoidAsync,
+        allowedErrors: allowedErrors,
+        inputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri("badoperationvoidresponsewiththrow", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleBadOperationVoidAsyncWithThrow,
-                                                                  allowedErrors: allowedErrors))
+    newHandlerSelector.addHandlerForUri(
+        "badoperationvoidresponsewiththrow", httpMethod: .POST,
+        operation: handleBadOperationVoidAsyncWithThrow,
+        allowedErrors: allowedErrors,
+        inputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri("badoperation", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleBadOperationAsync,
-                                                                  allowedErrors: allowedErrors))
+    newHandlerSelector.addHandlerForUri(
+        "badoperation", httpMethod: .POST,
+        operation: handleBadOperationAsync,
+        allowedErrors: allowedErrors,
+        inputLocation: .body,
+        outputLocation: .body)
     
-    newHandlerSelector.addHandlerForUri("badoperationwiththrow", httpMethod: .POST,
-                                        handler: OperationHandler(operation: handleBadOperationAsync,
-                                                                  allowedErrors: allowedErrors))
+    newHandlerSelector.addHandlerForUri(
+        "badoperationwiththrow", httpMethod: .POST,
+        operation: handleBadOperationAsync,
+        allowedErrors: allowedErrors,
+        inputLocation: .body,
+        outputLocation: .body)
     
     return newHandlerSelector
 }()
 
 private func verifyPathOutput(uri: String, body: Data) -> OperationResponse {
     let handler = OperationServerHTTP1RequestHandler(handlerSelector: handlerSelector,
-                                                     context: ExampleContext(),
-                                                     defaultOperationDelegate: JSONPayloadHTTP1OperationDelegate())
+                                                     context: ExampleContext())
     
     let httpRequestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1),
                                           method: .POST,
@@ -116,8 +134,9 @@ private func verifyErrorResponse(uri: String) {
 
 
     XCTAssertEqual(response.status.code, 400)
+    let body = response.responseComponents.body!
     let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                          from: response.body!.data)
+                                                          from: body.data)
 
     XCTAssertEqual("TheError", output.type)
     XCTAssertEqual("Is bad!", output.reason)
@@ -131,8 +150,9 @@ class SmokeOperationsHTTP1AsyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 200)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(OutputAttributes.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         let expectedOutput = OutputAttributes(bodyColor: .blue, isGreat: true)
         XCTAssertEqual(expectedOutput, output)
     }
@@ -141,9 +161,9 @@ class SmokeOperationsHTTP1AsyncTests: XCTestCase {
         let response = verifyPathOutput(uri: "exampleNoBodyOperation",
                                         body: serializedInput.data(using: .utf8)!)
 
-        
+        let body = response.responseComponents.body
         XCTAssertEqual(response.status.code, 200)
-        XCTAssertNil(response.body)
+        XCTAssertNil(body)
     }
   
     func testInputValidationError() {
@@ -152,8 +172,9 @@ class SmokeOperationsHTTP1AsyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 400)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         
         XCTAssertEqual("ValidationError", output.type)
     }
@@ -164,8 +185,9 @@ class SmokeOperationsHTTP1AsyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 500)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         
         XCTAssertEqual("InternalError", output.type)
     }
@@ -183,8 +205,9 @@ class SmokeOperationsHTTP1AsyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 400)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         
         XCTAssertEqual("InvalidOperation", output.type)
     }
@@ -195,8 +218,9 @@ class SmokeOperationsHTTP1AsyncTests: XCTestCase {
 
         
         XCTAssertEqual(response.status.code, 400)
+        let body = response.responseComponents.body!
         let output = try! JSONDecoder.getFrameworkDecoder().decode(ErrorResponse.self,
-                                                              from: response.body!.data)
+                                                              from: body.data)
         
         XCTAssertEqual("InvalidOperation", output.type)
     }

@@ -45,7 +45,6 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
     
     public func getInputForOperation<InputType: OperationHTTP1InputProtocol>(request: SmokeHTTP1Request) throws -> InputType {
         
-        
         func queryDecodableProvider() throws -> InputType.QueryType {
             return try QueryDecoder().decode(InputType.QueryType.self,
                                              from: request.query)
@@ -81,7 +80,7 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
     
     public func getInputForOperation<InputType>(request: SmokeHTTP1Request,
                                                 location: OperationInputHTTPLocation) throws
-        -> InputType where InputType : Decodable {
+        -> InputType where InputType: Decodable {
         
             switch location {
             case .body:
@@ -161,7 +160,7 @@ public struct JSONPayloadHTTP1OperationDelegate: HTTP1OperationDelegate {
             request: SmokeHTTP1Request,
             location: OperationOutputHTTPLocation,
             output: OutputType,
-            responseHandler: HTTP1ResponseHandler) where OutputType : Encodable {
+            responseHandler: HTTP1ResponseHandler) where OutputType: Encodable {
         switch location {
         case .body:
             let wrappedOutput = BodyOperationHTTPOutput<OutputType>(

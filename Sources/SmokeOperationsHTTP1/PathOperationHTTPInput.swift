@@ -35,9 +35,9 @@ public struct PathOperationHTTPInput<PathType: Decodable>: OperationHTTP1InputPr
     }
     
     public static func compose(queryDecodableProvider: () throws -> String,
-                        pathDecodableProvider: () throws -> PathType,
-                        bodyDecodableProvider: () throws -> String,
-                        headersDecodableProvider: () throws -> String) throws -> PathOperationHTTPInput {
+                               pathDecodableProvider: () throws -> PathType,
+                               bodyDecodableProvider: () throws -> String,
+                               headersDecodableProvider: () throws -> String) throws -> PathOperationHTTPInput {
         let path = try pathDecodableProvider()
         
         return .init(path: path)

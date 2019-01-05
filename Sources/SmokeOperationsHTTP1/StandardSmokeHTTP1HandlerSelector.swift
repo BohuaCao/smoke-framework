@@ -61,7 +61,7 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
         let lowerCasedUri = uri.lowercased()
         
         guard let handler = handlerMapping[lowerCasedUri]?[httpMethod] else {
-            guard let tokenizedHandler = getTokenizedHandler(lowerCasedUri: lowerCasedUri,
+            guard let tokenizedHandler = getTokenizedHandler(uri: uri,
                                                              httpMethod: httpMethod) else {
                 throw SmokeOperationsError.invalidOperation(reason:
                     "Invalid operation with uri '\(lowerCasedUri)', method '\(httpMethod)'")
@@ -75,9 +75,9 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
         return (handler, .null)
     }
     
-    private func getTokenizedHandler(lowerCasedUri: String,
+    private func getTokenizedHandler(uri: String,
                                      httpMethod: HTTPMethod) -> (SelectorOperationHandlerType, Shape)? {
-        let pathSegments = Array(lowerCasedUri.split(separator: segmentsSeparator)
+        let pathSegments = Array(uri.split(separator: segmentsSeparator)
             .map(String.init).reversed())
         
         // iterate through each tokenized handler
@@ -146,8 +146,7 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
                                           handler: SelectorOperationHandlerType) {
         let lowerCasedUri = uri.lowercased()
         
-        
-        if addTokenizedUri(lowerCasedUri, httpMethod: httpMethod, handler: handler) {
+        if addTokenizedUri(uri, httpMethod: httpMethod, handler: handler) {
             return
         }
         
@@ -159,12 +158,12 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
         }
     }
     
-    private mutating func addTokenizedUri(_ lowerCasedUri: String,
-                                 httpMethod: HTTPMethod,
-                                 handler: SelectorOperationHandlerType) -> Bool {
+    private mutating func addTokenizedUri(_ uri: String,
+                                          httpMethod: HTTPMethod,
+                                          handler: SelectorOperationHandlerType) -> Bool {
         let tokenizedPath: [HTTPPathSegment]
         do {
-            tokenizedPath = try HTTPPathSegment.tokenize(template: lowerCasedUri)
+            tokenizedPath = try HTTPPathSegment.tokenize(template: uri)
         } catch {
             return false
         }
@@ -178,7 +177,7 @@ public struct StandardSmokeHTTP1HandlerSelector<ContextType, DefaultOperationDel
         let templateSegments = Array(tokenizedPath.reversed())
         
         let tokenizedHandler = TokenizedHandler(
-            template: lowerCasedUri,
+            template: uri,
             templateSegments: templateSegments,
             httpMethod: httpMethod, operationHandler: handler)
         

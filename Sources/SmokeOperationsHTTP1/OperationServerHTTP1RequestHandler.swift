@@ -50,7 +50,7 @@ struct OperationServerHTTP1RequestHandler<ContextType, SelectorType>: HTTP1Reque
         
         let uriComponents = requestHead.uri.split(separator: "?", maxSplits: 1)
         let path = String(uriComponents[0])
-        let query = uriComponents.count > 1 ? String(uriComponents[0]) : ""
+        let query = uriComponents.count > 1 ? String(uriComponents[1]) : ""
 
         // get the handler to use
         let handler: OperationHandler<ContextType, SmokeHTTP1Request, HTTP1ResponseHandler>

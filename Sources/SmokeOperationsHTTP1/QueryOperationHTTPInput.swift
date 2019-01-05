@@ -35,9 +35,9 @@ public struct QueryOperationHTTPInput<QueryType: Decodable>: OperationHTTP1Input
     }
     
     public static func compose(queryDecodableProvider: () throws -> QueryType,
-                        pathDecodableProvider: () throws -> String,
-                        bodyDecodableProvider: () throws -> String,
-                        headersDecodableProvider: () throws -> String) throws -> QueryOperationHTTPInput {
+                               pathDecodableProvider: () throws -> String,
+                               bodyDecodableProvider: () throws -> String,
+                               headersDecodableProvider: () throws -> String) throws -> QueryOperationHTTPInput {
         let query = try queryDecodableProvider()
         
         return .init(query: query)

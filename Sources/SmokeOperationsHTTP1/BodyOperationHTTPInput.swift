@@ -35,9 +35,9 @@ public struct BodyOperationHTTPInput<BodyType: Decodable>: OperationHTTP1InputPr
     }
     
     public static func compose(queryDecodableProvider: () throws -> String,
-                        pathDecodableProvider: () throws -> String,
-                        bodyDecodableProvider: () throws -> BodyType,
-                        headersDecodableProvider: () throws -> String) throws -> BodyOperationHTTPInput {
+                               pathDecodableProvider: () throws -> String,
+                               bodyDecodableProvider: () throws -> BodyType,
+                               headersDecodableProvider: () throws -> String) throws -> BodyOperationHTTPInput {
         let body = try bodyDecodableProvider()
         
         return .init(body: body)
